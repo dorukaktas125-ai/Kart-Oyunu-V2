@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4 Kişilik Hafıza Kart Oyunu (Zafer Efektli)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background: var(--bg-color, #dc2626);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            transition: background 0.4s ease;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #ffffff;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+        }
+
+        .top-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .btn-group, .device-group {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 5px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        button {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background: #0369a1;
+        }
+
+        button.active {
+            background: #10b981;
+        }
+
+        .players-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .player-badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.4);
+            color: #ffffff;
+            transition: transform 0.2s;
+        }
+
+        .player-badge.active-player {
+            transform: scale(1.1);
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .info-bar {
+            font-size: 13px;
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 14px;
+            border-radius: 6px;
+            display: inline-flex;
+            gap: 15px;
+            justify-content: center;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+        }
+
+        .game-board {
+            display: grid;
+            gap: 6px;
+            width: 100%;
+            max-width: 900px;
+            perspective: 1000px;
+            margin-bottom: 15px;
+        }
+
+        .board-phone { grid-template-columns: repeat(4, 1fr); }
+        .board-tablet { grid-template-columns: repeat(6, 1fr); }
+        .board-pc { grid-template-columns: repeat(8, 1fr); }
+
+        .card {
+            aspect-ratio: 1;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            transform: rotateY(180deg);
+            opacity: 0.75;
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border: 2px solid #475569;
+            color: #38bdf8;
+        }
+
+        .card-back {
+            background: #1e1b4b;
+            border: 2px solid #6366f1;
+            transform: rotateY(180deg);
+        }
+
+        /* Eşleşen kartlarda emoji kalır, sağ üstüne yeşil tik gelir */
+        .card.matched::after {
+            content: '✔';
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            background: #10b981;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        /* Kazanma Bildirim Kutusu */
+        #winModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .win-box {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .win-box h2 {
+            font-size: 26px;
+            margin-bottom: 15px;
+        }
+
+        .win-box button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #10b981;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🧠 4 Kişilik Gelişmiş Hafıza Oyunu</h1>
+        
+        <div class="top-panel">
+            <div class="device-group">
+                <button id="btnPhone" onclick="setDevice('phone')">Telefon</button>
+                <button id="btnTablet" onclick="setDevice('tablet')">Tablet</button>
+                <button id="btnPC" onclick="setDevice('pc')">Bilgisayar</button>
+            </div>
+            <div class="btn-group">
+                <button onclick="toggleAudio()" id="audioBtn">🎵 Ses: Kapalı</button>
+                <button onclick="resetGame()">Yeniden Başlat 🔄</button>
+            </div>
+        </div>
+
+        <div class="players-bar">
+            <div id="p1Badge" class="player-badge">1. Oyuncu (Kırmızı): <span id="p1Score">0</span> Çift</div>
+            <div id="p2Badge" class="player-badge">2. Oyuncu (Sarı): <span id="p2Score">0</span> Çift</div>
+            <div id="p3Badge" class="player-badge">3. Oyuncu (Yeşil): <span id="p3Score">0</span> Çift</div>
+            <div id="p4Badge" class="player-badge">4. Oyuncu (Mavi): <span id="p4Score">0</span> Çift</div>
+        </div>
+
+        <div class="info-bar">
+            <div>Sıra: <span id="currentTurn">1. Oyuncu</span></div>
+            <div>⏳ Oturum Kalan: <span id="countdown">05:00:00</span></div>
+        </div>
+    </div>
+
+    <div class="game-board board-pc" id="board"></div>
+
+    <!-- Kazanma Modalı -->
+    <div id="winModal">
+        <div class="win-box">
+            <h2 id="winnerText">1. Oyuncu Kazandı!</h2>
+            <p id="winnerScore" style="color: #94a3b8; font-size: 14px; margin-bottom: 10px;"></p>
+            <button onclick="closeWinModal()">Harika! Yeni Oyun 🎮</button>
+        </div>
+    </div>
+
+    <script>
+        const allIcons = ['⚔️', '🛡️', '💎', '🍎', '🏹', '🔥', '🌊', '⚡', '👑', '🔑', '🚀', '⭐', '🍀', '🐉', '👻', '🍕', '🐱', '🐶', '🦊', '🐼', '🦄', '⚽', '🏀', '🚗', '✈️', '🎸', '🎨', '🧸', '🍔', '🍦', '🍩', '🍫', '⌚', '💡', '💻', '📞', '🔋', '🎁', '🎈', '🏆', '🎯', '🧩', '🎲', '🛹', '🚲', '⚓', '🌵', '🌺', '🍎', '🍉'];
+        
+        let currentDevice = 'pc';
+        let cardCount = 36; 
+        let icons = [];
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let lockBoard = false;
+
+        let activePlayer = 1; 
+        let scores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+        const playerBackgrounds = {
+            1: '#dc2626', // Kırmızı
+            2: '#d97706', // Sarı
+            3: '#16a34a', // Yeşil
+            4: '#2563eb'  // Mavi
+        };
+
+        const playerNames = {
+            1: '1. Oyuncu (Kırmızı)',
+            2: '2. Oyuncu (Sarı)',
+            3: '3. Oyuncu (Yeşil)',
+            4: '4. Oyuncu (Mavi)'
+        };
+
+        // Ses / Melodi Durumu
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let melodyInterval = null;
+
+        // 5 Saatlik Oturum (18.000 Saniye)
+        const TOTAL_SESSION_TIME = 18000;
+        let sessionStartTime = localStorage.getItem('memory_4p_session');
+        if (!sessionStartTime) {
+            sessionStartTime = Date.now();
+            localStorage.setItem('memory_4p_session', sessionStartTime);
+        }
+
+        function setDevice(device) {
+            currentDevice = device;
+            const board = document.getElementById('board');
+            board.className = 'game-board';
+
+            document.getElementById('btnPhone').classList.remove('active');
+            document.getElementById('btnTablet').classList.remove('active');
+            document.getElementById('btnPC').classList.remove('active');
+
+            if (device === 'phone') {
+                board.classList.add('board-phone');
+                cardCount = 14; 
+                document.getElementById('btnPhone').classList.add('active');
+            } else if (device === 'tablet') {
+                board.classList.add('board-tablet');
+                cardCount = 26; 
+                document.getElementById('btnTablet').classList.add('active');
+            } else {
+                board.classList.add('board-pc');
+                cardCount = 36; 
+                document.getElementById('btnPC').classList.add('active');
+            }
+            resetGame();
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function resetGame() {
+            matchedPairs = 0;
+            flippedCards = [];
+            lockBoard = false;
+            activePlayer = 1;
+            scores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            updateScoreboard();
+
+            const pairCount = cardCount / 2;
+            let selectedIcons = allIcons.slice(0, pairCount);
+            icons = [...selectedIcons, ...selectedIcons];
+            shuffle(icons);
+
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            icons.forEach((icon, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.icon = icon;
+
+                card.innerHTML = `
+                    <div class="card-face card-front">?</div>
+                    <div class="card-face card-back">${icon}</div>
+                `;
+
+                card.addEventListener('click', () => flipCard(card));
+                board.appendChild(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (lockBoard || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            lockBoard = true;
+            const [card1, card2] = flippedCards;
+            const isMatch = card1.dataset.icon === card2.dataset.icon;
+
+            if (isMatch) {
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    scores[activePlayer]++;
+                    updateScoreboard();
+                    resetTurn();
+
+                    const totalPairsNeeded = cardCount / 2;
+                    if (matchedPairs === totalPairsNeeded) {
+                        handleGameOver();
+                    }
+                }, 400);
+            } else {
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    nextPlayer();
+                    resetTurn();
+                }, 900);
+            }
+        }
+
+        // Oyunu kimin kazandığını hesaplayıp ekrana yazdıran ve zafer sesi çalan fonksiyon
+        function handleGameOver() {
+            playWinSound(); // Zafer ses efekti
+
+            // En yüksek puana sahip oyuncuyu bul
+            let maxScore = -1;
+            let winnerPlayer = 1;
+            for (let p = 1; p <= 4; p++) {
+                if (scores[p] > maxScore) {
+                    maxScore = scores[p];
+                    winnerPlayer = p;
+                }
+            }
+
+            const modal = document.getElementById('winModal');
+            const winnerText = document.getElementById('winnerText');
+            const winnerScore = document.getElementById('winnerScore');
+
+            winnerText.innerText = `${playerNames[winnerPlayer]} Kazandı!`;
+            winnerText.style.color = playerBackgrounds[winnerPlayer];
+            winnerScore.innerText = `Toplam Toplanan Çift: ${maxScore}`;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').style.display = 'none';
+            resetGame();
+        }
+
+        function nextPlayer() {
+            activePlayer = activePlayer >= 4 ? 1 : activePlayer + 1;
+            updateScoreboard();
+        }
+
+        function updateScoreboard() {
+            document.getElementById('p1Score').innerText = scores[1];
+            document.getElementById('p2Score').innerText = scores[2];
+            document.getElementById('p3Score').innerText = scores[3];
+            document.getElementById('p4Score').innerText = scores[4];
+
+            ['p1Badge', 'p2Badge', 'p3Badge', 'p4Badge'].forEach((id, idx) => {
+                const badge = document.getElementById(id);
+                if (idx + 1 === activePlayer) {
+                    badge.classList.add('active-player');
+                } else {
+                    badge.classList.remove('active-player');
+                }
+            });
+
+            document.documentElement.style.setProperty('--bg-color', playerBackgrounds[activePlayer]);
+            document.getElementById('currentTurn').innerText = playerNames[activePlayer];
+        }
+
+        function resetTurn() {
+            flippedCards = [];
+            lockBoard = false;
+        }
+
+        // Kazanma ses efekti (Zafer Tonu)
+        function playWinSound() {
+            try {
+                const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const winNotes = [330, 392, 659, 523, 587, 784]; // Neşeli zafer arpeji
+                winNotes.forEach((freq, index) => {
+                    const osc = tempCtx.createOscillator();
+                    const gain = tempCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, tempCtx.currentTime + (index * 0.12));
+                    gain.gain.setValueAtTime(0.8, tempCtx.currentTime + (index * 0.12));
+                    gain.gain.exponentialRampToValueAtTime(0.01, tempCtx.currentTime + (index * 0.12) + 0.3);
+                    osc.connect(gain);
+                    gain.connect(tempCtx.destination);
+                    osc.start(tempCtx.currentTime + (index * 0.12));
+                    osc.stop(tempCtx.currentTime + (index * 0.12) + 0.3);
+                });
+            } catch(e) {}
+        }
+
+        // 5 Saatlik Oturum Sayaç Yöneticisi
+        setInterval(() => {
+            const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+            let remainingSeconds = TOTAL_SESSION_TIME - elapsedSeconds;
+
+            if (remainingSeconds <= 0) {
+                localStorage.removeItem('memory_4p_session');
+                location.reload();
+                return;
+            }
+
+            const hours = Math.floor(remainingSeconds / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((remainingSeconds % 3600) / 60).toString().padStart(2, '0');
+            const secs = (remainingSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('countdown').innerText = `${hours}:${mins}:${secs}`;
+        }, 1000);
+
+        // Her 1 Saniyede Bir Çalan Arka Plan Melodisi
+        function toggleAudio() {
+            const btn = document.getElementById('audioBtn');
+            if (!isAudioPlaying) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    isAudioPlaying = true;
+                    btn.innerText = "🎵 Ses: Açık";
+                    btn.classList.add('active');
+                    startMelodyLoop();
+                } catch(e) {
+                    alert("Tarayıcınız ses çalmayı desteklemiyor.");
+                }
+            } else {
+                if (audioCtx) audioCtx.suspend();
+                isAudioPlaying = false;
+                clearInterval(melodyInterval);
+                btn.innerText = "🎵 Ses: Kapalı";
+                btn.classList.remove('active');
+            }
+        }
+
+        function startMelodyLoop() {
+            const notes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
+            let i = 0;
+            
+            melodyInterval = setInterval(() => {
+                if (!isAudioPlaying || !audioCtx) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(notes[i % notes.length], audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.95);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.95);
+                    i++;
+                } catch(e) {}
+            }, 1000);
+        }
+
+        // Başlangıç ayarı
+        setDevice('pc');
+    </script>
+</body>
+</html>
